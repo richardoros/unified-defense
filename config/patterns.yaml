@@ -1,0 +1,114 @@
+# ==============================================================================
+# UNIFIED DEFENSE - Security Configuration
+# Defines protected paths, dangerous commands, and safe zones
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# PROTECTED PATHS
+# Glob patterns for paths that should be protected from Claude's access
+# Levels:
+#   - block: Block both read and write access
+#   - read_only: Allow read, block write
+#   - allow: Explicitly allow (overrides other rules)
+# ------------------------------------------------------------------------------
+protected_paths:
+  # CRITICAL: Secrets and credentials (block completely)
+  - pattern: "**/.env"
+    level: block
+    reason: "Environment files may contain secrets"
+  - pattern: "**/.env.*"
+    level: block
+    reason: "Environment files may contain secrets"
+  - pattern: "~/.ssh/**"
+    level: block
+    reason: "SSH keys and configuration"
+  - pattern: "~/.aws/**"
+    level: block
+    reason: "AWS credentials"
+  - pattern: "~/.gnupg/**"
+    level: block
+    reason: "GPG keys"
+  - pattern: "**/*.pem"
+    level: block
+    reason: "Private key files"
+  - pattern: "**/*.key"
+    level: block
+    reason: "Private key files"
+  - pattern: "**/id_rsa*"
+    level: block
+    reason: "SSH private keys"
+  - pattern: "**/id_ed25519*"
+    level: block
+    reason: "SSH private keys"
+  - pattern: "~/.netrc"
+    level: block
+    reason: "Network credentials"
+  - pattern: "~/.npmrc"
+    level: block
+    reason: "NPM tokens"
+  - pattern: "~/.pypirc"
+    level: block
+    reason: "PyPI tokens"
+
+  # SYSTEM: Read-only protection
+  - pattern: "/etc/**"
+    level: read_only
+    reason: "System configuration"
+  - pattern: "/usr/**"
+    level: read_only
+    reason: "System binaries"
+  - pattern: "/bin/**"
+    level: read_only
+    reason: "System binaries"
+  - pattern: "/sbin/**"
+    level: read_only
+    reason: "System binaries"
+  - pattern: "/var/**"
+    level: read_only
+    reason: "System variable data"
+
+# ------------------------------------------------------------------------------
+# DANGEROUS COMMANDS
+# Regex patterns for Bash commands that should be blocked
+# ------------------------------------------------------------------------------
+dangerous_commands:
+  - pattern: "rm\\s+(-[^\\s]*)?\\s*-rf\\s+/"
+    reason: "Recursive force delete from root"
+  - pattern: "rm\\s+(-[^\\s]*)?\\s*-rf\\s+~"
+    reason: "Recursive force delete from home"
+  - pattern: "rm\\s+(-[^\\s]*)?\\s*-rf\\s+\\*"
+    reason: "Recursive force delete wildcard"
+  - pattern: ":(\\s*)\\(\\s*\\)\\s*\\{.*\\|.*&.*\\}"
+    reason: "Fork bomb pattern"
+  - pattern: "mkfs\\."
+    reason: "Filesystem format command"
+  - pattern: "dd\\s+.*of=/dev/"
+    reason: "Direct disk write"
+  - pattern: "chmod\\s+(-[^\\s]*\\s+)?777"
+    reason: "Overly permissive file permissions"
+  - pattern: "chmod\\s+(-[^\\s]*\\s+)?\\+s"
+    reason: "Setting SUID/SGID bit"
+  - pattern: "curl\\s+.*\\|\\s*(sudo\\s+)?(ba)?sh"
+    reason: "Pipe curl to shell"
+  - pattern: "wget\\s+.*\\|\\s*(sudo\\s+)?(ba)?sh"
+    reason: "Pipe wget to shell"
+  - pattern: ">(\\s+)?/dev/sda"
+    reason: "Overwrite disk device"
+  - pattern: "sudo\\s+rm\\s+"
+    reason: "Sudo remove (requires explicit approval)"
+  - pattern: "\\$\\(.*\\)\\s*>\\s*/etc/"
+    reason: "Command substitution writing to /etc"
+
+# ------------------------------------------------------------------------------
+# SAFE ZONES
+# Glob patterns for paths that are explicitly allowed
+# These take precedence over protected_paths
+# ------------------------------------------------------------------------------
+safe_zones:
+  - pattern: "/tmp/**"
+    reason: "Temporary files"
+  - pattern: "/var/tmp/**"
+    reason: "Temporary files"
+  # Add your project directories here:
+  # - pattern: "~/projects/**"
+  #   reason: "Personal projects"
