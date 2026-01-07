@@ -148,10 +148,11 @@ def extract_paths_from_command(command: str) -> list:
 
 
 def check_dangerous_command(command: str, patterns: list) -> Optional[str]:
-    """Check if command matches any dangerous command pattern."""
+    """Check if command matches any dangerous command pattern (simple substring match)."""
+    command_lower = command.lower()
     for item in patterns:
-        pattern = item.get("pattern", "")
-        if re.search(pattern, command, re.IGNORECASE):
+        pattern = item.get("pattern", "").lower()
+        if pattern and pattern in command_lower:
             return item.get("reason", "Matches dangerous command pattern")
     return None
 
