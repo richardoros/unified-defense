@@ -4,6 +4,19 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# GLOBAL SETTINGS
+# ------------------------------------------------------------------------------
+settings:
+  # Mode: "blocklist" (default) or "whitelist"
+  # - blocklist: Block only what's in protected_paths/dangerous_commands
+  # - whitelist: Block EVERYTHING except what's in safe_zones (paranoid mode)
+  mode: "blocklist"
+  
+  # Logging: Enable to write all decisions to ~/.claude/defense.log
+  logging: true
+  log_file: "~/.claude/defense.log"
+
+# ------------------------------------------------------------------------------
 # PROTECTED PATHS
 # Glob patterns for paths that should be protected from Claude's access
 # Levels:

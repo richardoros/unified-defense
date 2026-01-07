@@ -1,101 +1,296 @@
-# Unified Defense
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.6+-blue?logo=python&logoColor=white" alt="Python 3.6+">
+  <img src="https://img.shields.io/badge/Claude_Code-Compatible-blueviolet?logo=anthropic&logoColor=white" alt="Claude Code">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+  <img src="https://img.shields.io/badge/Dependencies-Zero-brightgreen" alt="No Dependencies">
+</p>
 
-A self-contained Claude Code protection system that guards against accidental damage.
+<h1 align="center">🛡️ Unified Defense</h1>
 
-## Features
+<p align="center">
+  <strong>A self-contained protection system for Claude Code</strong><br>
+  Prevent accidental damage to your system with intelligent guardrails
+</p>
 
-- **🛡️ Bash Guard** — Blocks dangerous shell commands (`rm -rf /`, fork bombs, etc.)
-- **📁 Edit Guard** — Prevents writes to sensitive files (`.env`, `.ssh/`, credentials)
-- **⚙️ Configurable** — Customize protection rules via `patterns.yaml`
-- **🚫 No Dependencies** — Pure Python, no external packages required
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-terminal-dashboard">Dashboard</a> •
+  <a href="#%EF%B8%8F-configuration">Configuration</a> •
+  <a href="#-how-it-works">How It Works</a>
+</p>
 
-## Quick Install
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🚫 **Command Blocking** | Stops dangerous commands like `rm -rf /`, `chmod 777`, fork bombs |
+| 🔒 **Path Protection** | Guards sensitive files: `.env`, `.ssh/`, `.aws/`, private keys |
+| 📋 **Blocklist Mode** | Default mode — blocks only known dangerous patterns |
+| 🔐 **Whitelist Mode** | Paranoid mode — blocks everything except explicitly allowed paths |
+| 📝 **Audit Logging** | Records all decisions to `~/.claude/defense.log` |
+| 🖥️ **Terminal Dashboard** | Interactive UI to manage settings and view logs |
+| ⚡ **Zero Dependencies** | Pure Python 3.6+ — no pip packages required |
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/unified-defense.git
+cd unified-defense
+
+# Install (copies hooks to ~/.claude/hooks/)
 chmod +x install.sh
 ./install.sh
+
+# Restart Claude Code to activate
 ```
 
-## How It Works
+That's it! Unified Defense is now protecting your system.
 
-Unified Defense uses [Claude Code hooks](https://docs.anthropic.com/claude-code/hooks) to intercept tool calls before they execute:
+---
+
+## 🖥️ Terminal Dashboard
+
+Manage your defense settings with an interactive terminal UI:
+
+```bash
+python3 defense.py
+```
 
 ```
-Claude Code → PreToolUse Hook → bash_guard.py / edit_guard.py → Allow/Block
+╔══════════════════════════════════════════╗
+║     🛡️  UNIFIED DEFENSE DASHBOARD  🛡️     ║
+╚══════════════════════════════════════════╝
+
+STATUS─────────────────────────────────────
+Mode:    📋 BLOCKLIST (Normal)
+Logging: ✅ ENABLED
+
+STATISTICS─────────────────────────────────
+Total:   42 decisions
+Blocked: 7
+Allowed: 35
+
+ACTIONS────────────────────────────────────
+ ▶ Toggle Mode          RECENT ACTIVITY────────
+   Toggle Logging       ✅ ls /tmp
+   View Logs            ❌ rm -rf /
+   Refresh              ✅ cat file.txt
+   Quit                 ❌ chmod 777 script.sh
+
+↑/↓: Navigate  |  Enter: Select  |  q: Quit
 ```
 
-### Protection Layers
+**Controls:**
+- `↑` / `↓` — Navigate menu
+- `Enter` — Select action
+- `q` — Quit dashboard
 
-1. **Dangerous Command Detection**
-   - Regex patterns catch destructive commands like `rm -rf /`, `mkfs.*`, `chmod 777`
-   - Blocks `curl | bash` and similar remote code execution patterns
+---
 
-2. **Path Protection**
-   - Blocks access to secrets: `.env`, `.ssh/`, `.aws/`, `*.pem`, `*.key`
-   - Read-only protection for system directories: `/etc/`, `/usr/`, `/bin/`
-   - Safe zones for temporary and project directories
+## ⚙️ Configuration
 
-## Configuration
+Edit `~/.claude/hooks/unified-defense/config/patterns.yaml` to customize protection rules.
 
-Edit `~/.claude/hooks/unified-defense/config/patterns.yaml` to customize:
+### Global Settings
 
 ```yaml
-# Block access to a path
+settings:
+  # "blocklist" (default) or "whitelist" (paranoid mode)
+  mode: "blocklist"
+  
+  # Enable audit logging
+  logging: true
+  log_file: "~/.claude/defense.log"
+```
+
+### Operating Modes
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `blocklist` | Blocks only patterns in `protected_paths` and `dangerous_commands` | Normal development |
+| `whitelist` | Blocks **everything** except paths in `safe_zones` | High-security environments |
+
+### Protected Paths
+
+Define paths Claude cannot access:
+
+```yaml
 protected_paths:
-  - pattern: "~/.secrets/**"
+  # Completely block access
+  - pattern: "~/.ssh/**"
     level: block
-    reason: "Custom secrets directory"
+    reason: "SSH keys and configuration"
 
-# Make a path read-only
-  - pattern: "/my/important/data/**"
+  # Allow read, block write
+  - pattern: "/etc/**"
     level: read_only
-    reason: "Important data, no modifications"
+    reason: "System configuration"
+```
 
-# Allow full access to a path
+### Dangerous Commands
+
+Block dangerous shell commands:
+
+```yaml
+dangerous_commands:
+  - pattern: "rm -rf /"
+    reason: "Recursive force delete from root"
+  - pattern: "chmod 777"
+    reason: "Overly permissive file permissions"
+  - pattern: "curl.*|.*sh"
+    reason: "Pipe curl to shell"
+```
+
+### Safe Zones
+
+Explicitly allow access to certain paths (takes precedence over blocks):
+
+```yaml
 safe_zones:
-  - pattern: "~/projects/**"
-    reason: "My project directories"
+  - pattern: "/tmp/**"
+    reason: "Temporary files"
+  - pattern: "~/projects/my-app/**"
+    reason: "My current project"
 ```
 
 ### Protection Levels
 
-| Level | Read | Write | Use Case |
-|-------|------|-------|----------|
-| `block` | ❌ | ❌ | Secrets, credentials |
-| `read_only` | ✅ | ❌ | System files, configs |
-| `allow` | ✅ | ✅ | Safe zones, projects |
+| Level | Read | Write | Typical Use |
+|-------|:----:|:-----:|-------------|
+| `block` | ❌ | ❌ | Secrets, credentials, private keys |
+| `read_only` | ✅ | ❌ | System files, configuration |
+| `allow` | ✅ | ✅ | Project directories, temp files |
 
-## Uninstall
+---
+
+## 🔧 How It Works
+
+Unified Defense uses [Claude Code hooks](https://docs.anthropic.com/claude-code/hooks) to intercept tool calls before they execute:
+
+```mermaid
+flowchart TB
+    subgraph Claude["Claude Code"]
+        PT["PreToolUse Hook"]
+    end
+    
+    subgraph Defense["Unified Defense System"]
+        BC["bash_guard.py"]
+        EC["edit_guard.py"]
+        PC["patterns.yaml"]
+    end
+    
+    PT --> |"Bash commands"| BC
+    PT --> |"File edits"| EC
+    BC --> PC
+    EC --> PC
+    
+    BC --> |"ALLOW/BLOCK"| Claude
+    EC --> |"ALLOW/BLOCK"| Claude
+```
+
+### Hook Protocol
+
+| Action | Exit Code | Output |
+|--------|:---------:|--------|
+| **Allow** | `0` | (none) |
+| **Block** | `2` | Reason written to stderr |
+
+When a command is blocked, Claude sees the reason and can adjust its approach.
+
+---
+
+## 📊 Audit Log
+
+When logging is enabled, all decisions are recorded:
+
+```
+~/.claude/defense.log
+```
+
+Example log entries:
+```
+[2026-01-07T10:30:45] BASH BLOCK: rm -rf / | Dangerous command: Recursive force delete from root
+[2026-01-07T10:30:47] BASH ALLOW: ls /tmp | Command passed security checks
+[2026-01-07T10:31:02] EDIT BLOCK: ~/.ssh/config | BLOCKED: SSH keys and configuration
+[2026-01-07T10:31:15] EDIT ALLOW: /tmp/test.txt | File edit passed security checks
+```
+
+---
+
+## 📁 Project Structure
+
+```
+unified-defense/
+├── defense.py          # 🖥️ Interactive terminal dashboard
+├── install.sh          # 📦 One-click installer
+├── uninstall.sh        # 🗑️ Uninstaller
+├── README.md           # 📖 Documentation (you are here)
+├── config/
+│   └── patterns.yaml   # ⚙️ Security rules configuration
+└── hooks/
+    ├── bash_guard.py   # 🛡️ Bash command protection
+    └── edit_guard.py   # 🛡️ File edit protection
+```
+
+---
+
+## 🧪 Testing
+
+After installation, test the hooks by asking Claude to perform protected operations:
+
+| Test | Expected Result |
+|------|-----------------|
+| "Run `rm -rf /`" | ❌ Blocked — Dangerous command |
+| "Edit `~/.ssh/config`" | ❌ Blocked — Protected path |
+| "Create a file in `/tmp`" | ✅ Allowed — Safe zone |
+| "Run `ls -la`" | ✅ Allowed — Safe command |
+
+---
+
+## 🗑️ Uninstall
 
 ```bash
 ./uninstall.sh
 ```
 
-## File Structure
+This removes the hooks from `~/.claude/` and cleans up settings.
 
-```
-unified-defense/
-├── install.sh          # One-click installer
-├── uninstall.sh        # Uninstaller
-├── config/
-│   └── patterns.yaml   # Security rules
-└── hooks/
-    ├── bash_guard.py   # Bash command protection
-    └── edit_guard.py   # File edit protection
-```
+---
 
-## Testing
+## 🔒 Default Protected Paths
 
-After installation, restart Claude Code and test:
+Out of the box, Unified Defense protects:
 
-```
-You: "Delete everything in my home directory"
-Claude: [BLOCKED by bash_guard: Dangerous command - Recursive force delete from home]
+| Category | Patterns |
+|----------|----------|
+| **Secrets** | `**/.env`, `**/.env.*` |
+| **SSH** | `~/.ssh/**`, `**/id_rsa*`, `**/id_ed25519*` |
+| **Cloud** | `~/.aws/**`, `~/.gnupg/**` |
+| **Keys** | `**/*.pem`, `**/*.key` |
+| **Tokens** | `~/.npmrc`, `~/.pypirc`, `~/.netrc` |
+| **System** | `/etc/**`, `/usr/**`, `/bin/**`, `/sbin/**` (read-only) |
 
-You: "Edit my SSH config"  
-Claude: [BLOCKED by edit_guard: SSH keys and configuration]
-```
+---
 
-## License
+## 🤝 Contributing
 
-MIT
+Contributions welcome! Please feel free to submit issues and pull requests.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <strong>Stay safe. Code with confidence.</strong><br>
+  <sub>Built with 🛡️ for the Claude Code community</sub>
+</p>
